@@ -52,40 +52,6 @@ def wrap(pos: int, bound: int) -> int:
         return pos
 
 
-def hit_apple(
-    head: tuple[int, int], direction: tuple[int, int], apple: tuple[int, int]
-) -> bool:
-    """Check if the snake has hit the apple.
-
-    Args:
-        head (tuple[int, int]): The snake's head position.
-        direction (tuple[int, int]): The direction of the snake.
-        apple (tuple[int, int]): The apple's position.
-
-    Returns:
-        bool: Whether the snake has hit the apple.
-    """
-    new_head_pos = (
-        wrap(head[0] + direction[0], MAP_WIDTH),
-        wrap(head[1] + direction[1], MAP_HEIGHT),
-    )
-
-    return new_head_pos == apple
-
-
-def hit_self(snake_head: tuple[int, int], snake_body: set[tuple[int, int]]) -> bool:
-    """Check if the snake has hit itself.
-
-    Args:
-        snake_head (tuple[int, int]): The snake's head position.
-        snake_body (set[tuple[int, int]]): The snake's body position.
-
-    Returns:
-        bool: Whether the snake has hit itself.
-    """
-    return snake_head in snake_body
-
-
 def update_snake(
     snake: deque[tuple[int, int]],
     snake_body_set: set[tuple[int, int]],
@@ -254,14 +220,12 @@ def main() -> None:
     snake_body_set = set([snake[i] for i in range(1, len(snake))])
 
     apple = get_apple_pos(snake_head, snake_body_set)
+    ate_apple = False
     score = 0
     direction = Directions.RIGHT
 
     clear_screen()
     while True:
-        ate_apple = False
-        snake_head = snake[0]
-
         handle_signals()
         show_cursor(False)
         clear_map()
@@ -270,7 +234,7 @@ def main() -> None:
         print_map(MAP_WIDTH, MAP_HEIGHT, snake_head, snake_body_set, apple)
 
         key_pressed, timed_out = timedKey(
-            "\u001b[2K", timeout=0.3, allowCharacters="wasdq"  # type: ignore
+            "\u001b[2K", timeout=0.2, allowCharacters="wasdq"  # type: ignore
         )
 
         if not timed_out:
@@ -279,16 +243,18 @@ def main() -> None:
             else:
                 direction = change_direction(direction, key_pressed)
 
-        if hit_apple(snake[0], direction, apple):
+        # mutate the snake and snake body set
+        update_snake(snake, snake_body_set, direction, ate_apple)
+        snake_head = snake[0]
+        ate_apple = False
+
+        if snake_head == apple:
             apple = get_apple_pos(snake[0], snake_body_set)
             ate_apple = True
             score += 1
 
-        if hit_self(snake_head, snake_body_set):
+        if snake_head in snake_body_set:
             exit_game(score)
-
-        # mutate the snake and snake body set
-        update_snake(snake, snake_body_set, direction, ate_apple)
 
 
 if __name__ == "__main__":
