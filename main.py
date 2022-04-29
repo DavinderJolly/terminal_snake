@@ -160,15 +160,14 @@ def get_apple_pos(
 
 def clear_screen() -> None:
     """Clear the screen."""
-    if platform.system() == "Windows":
-        os.system("cls")
-    else:
-        os.system("clear")
+    print("\033c", end="")
 
 
 def clear_map() -> None:
     """Clear the map."""
-    print("\033[F" * (MAP_HEIGHT + 5))
+    # offset according to extra newlines printed from quit message, the input, etc
+    offset = 3
+    print("\033[F" * (MAP_HEIGHT + offset), end="")
 
 
 def show_cursor(show: bool) -> None:
@@ -224,7 +223,11 @@ def main() -> None:
     score = 0
     direction = Directions.RIGHT
 
-    clear_screen()
+    if platform.system() == "Windows":
+        # windows clearfix to make ansi work outside of windows terminal
+        os.system("cls")
+    else:
+        clear_screen()
     while True:
         handle_signals()
         show_cursor(False)
