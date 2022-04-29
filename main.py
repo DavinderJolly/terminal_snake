@@ -39,6 +39,9 @@ def wrap(pos: int, bound: int) -> int:
     Args:
         pos (int): The position to wrap.
         bound (int): The bound of the map.
+
+    Returns:
+        int: The wrapped position.
     """
 
     if pos <= 0:
@@ -49,77 +52,62 @@ def wrap(pos: int, bound: int) -> int:
         return pos
 
 
-def hit_apple(
-    head: tuple[int, int], direction: tuple[int, int], apple: tuple[int, int]
-) -> bool:
-    """Check if the snake has hit the apple.
-
-    Args:
-        head (tuple[int, int]): The snake's head position.
-        direction (tuple[int, int]): The direction of the snake.
-        apple (tuple[int, int]): The apple's position.
-    """
-    new_head_pos = (
-        wrap(head[0] + direction[0], MAP_WIDTH),
-        wrap(head[1] + direction[1], MAP_HEIGHT),
-    )
-
-    return new_head_pos == apple
-
-
-def hit_self(snake: deque[tuple[int, int]]) -> bool:
-    """Check if the snake has hit itself.
-
-    Args:
-        snake (deque[tuple[int, int]]): The snake's position.
-    """
-    return len(snake) > 3 and snake[0] in [snake[i] for i in range(3, len(snake))]
-
-
 def update_snake(
-    snake: deque[tuple[int, int]], direction: tuple[int, int]
-) -> deque[tuple[int, int]]:
+    snake: deque[tuple[int, int]],
+    snake_body_set: set[tuple[int, int]],
+    direction: tuple[int, int],
+    ate_apple: bool,
+) -> None:
     """Update the snake's position.
 
     Args:
         snake (deque[tuple[int, int]]): The snake's position.
+        snake_body_set (set[tuple[int, int]]): The snake's body position.
         direction (tuple[int, int]): The direction of the snake.
+        ate_apple (bool): Whether the snake has eaten the apple.
     """
     new_head_pos = (
         wrap(snake[0][0] + direction[0], MAP_WIDTH),
         wrap(snake[0][1] + direction[1], MAP_HEIGHT),
     )
-    new_snake = snake.copy()
-    new_snake.appendleft(new_head_pos)
-    new_snake.pop()
-    return new_snake
+    snake.appendleft(new_head_pos)
+    snake_body_set.add(snake[1])
+    if not ate_apple:
+        removed = snake.pop()
+        snake_body_set.remove(removed)
 
 
 def print_map(
-    cells: list[tuple[int, int]], snake: deque[tuple[int, int]], apple: tuple[int, int]
+    width: int,
+    height: int,
+    snake_head: tuple[int, int],
+    snake_body_set: set[tuple[int, int]],
+    apple: tuple[int, int],
 ) -> None:
     """Print the map with the snake and the apple.
 
     Args:
-        cells (list[tuple[int, int]]): The map.
-        snake (deque[tuple[int, int]]): The snake's position.
+        width (int): The width of the map.
+        height (int): The height of the map.
+        snake_head (tuple[int, int]): The snake's head position.
+        snake_body_set (set[tuple[int, int]]): The snake's body position.
         apple (tuple[int, int]): The apple's position.
     """
-    for cell in cells:
-        output = ""
-        if cell[0] in (0, MAP_WIDTH - 1) or cell[1] in (0, MAP_HEIGHT - 1):
-            output = ForeColors.BRIGHT_CYAN + "█" + ForeColors.RESET
-        elif cell == apple:
-            output = ForeColors.BRIGHT_RED + "○" + ForeColors.RESET
-        elif cell == snake[0]:
-            output = ForeColors.BLUE + "⬤" + ForeColors.RESET
-        elif cell in [snake[i] for i in range(1, len(snake))]:
-            output = ForeColors.BRIGHT_GREEN + "⬤" + ForeColors.RESET
-        else:
-            output = " "
-        print(output, end="")
-        if cell[0] == MAP_WIDTH - 1:
-            print()
+    for y in range(height):
+        for x in range(width):
+            output = ""
+            if x in (0, MAP_WIDTH - 1) or y in (0, MAP_HEIGHT - 1):
+                output = ForeColors.BRIGHT_CYAN + "█" + ForeColors.RESET
+            elif (x, y) == apple:
+                output = ForeColors.BRIGHT_RED + "○" + ForeColors.RESET
+            elif (x, y) == snake_head:
+                output = ForeColors.BLUE + "⬤" + ForeColors.RESET
+            elif (x, y) in snake_body_set:
+                output = ForeColors.BRIGHT_GREEN + "⬤" + ForeColors.RESET
+            else:
+                output = " "
+            print(output, end="")
+        print()
 
 
 def change_direction(current_dir: tuple[int, int], key: str) -> tuple[int, int]:
@@ -128,6 +116,9 @@ def change_direction(current_dir: tuple[int, int], key: str) -> tuple[int, int]:
     Args:
         current_dir (tuple[int, int]): The current direction of the snake.
         key (str): The key pressed by the user.
+
+    Returns:
+        tuple[int, int]: The new direction of the snake.
     """
     if key == "w" and current_dir != Directions.DOWN:
         return Directions.UP
@@ -141,33 +132,42 @@ def change_direction(current_dir: tuple[int, int], key: str) -> tuple[int, int]:
 
 
 def get_random_pos() -> tuple[int, int]:
-    """Get a random position on the map."""
+    """Get a random position on the map.
+
+    Returns:
+        tuple[int, int]: The random position.
+    """
     return (random.randrange(1, MAP_WIDTH - 1), random.randrange(1, MAP_HEIGHT - 1))
 
 
-def get_apple_pos(snake: deque[tuple[int, int]]):
+def get_apple_pos(
+    snake_head: tuple[int, int], snake_body_set: set[tuple[int, int]]
+) -> tuple[int, int]:
     """Get a random position on the map for the apple which is not inside the snake.
 
     Args:
-        snake (deque[tuple[int, int]]): The snake's position.
+        snake_head (tuple[int, int]): The snake's head position.
+        snake_body_set (set[tuple[int, int]]): The snake's body position.
+
+    Returns:
+        tuple[int, int]: The apple's position.
     """
     new_pos = get_random_pos()
-    while new_pos in snake:
+    while new_pos != snake_head and new_pos in snake_body_set:
         new_pos = get_random_pos()
     return new_pos
 
 
 def clear_screen() -> None:
     """Clear the screen."""
-    if platform.system() == "Windows":
-        os.system("cls")
-    else:
-        os.system("clear")
+    print("\033c", end="")
 
 
 def clear_map() -> None:
     """Clear the map."""
-    print("\033[F" * (MAP_HEIGHT + 5))
+    # offset according to extra newlines printed from quit message, the input, etc
+    offset = 3
+    print("\033[F" * (MAP_HEIGHT + offset), end="")
 
 
 def show_cursor(show: bool) -> None:
@@ -208,7 +208,6 @@ def handle_signals() -> None:
 
 def main() -> None:
     """Entry point function."""
-    cells = [(col, row) for row in range(MAP_HEIGHT) for col in range(MAP_WIDTH)]
     snake: deque[tuple[int, int]] = deque(
         [
             (5, (MAP_HEIGHT // 2)),
@@ -216,21 +215,29 @@ def main() -> None:
             (3, (MAP_HEIGHT // 2)),
         ]
     )
-    apple = get_apple_pos(snake)
+    snake_head = snake[0]
+    snake_body_set = set([snake[i] for i in range(1, len(snake))])
+
+    apple = get_apple_pos(snake_head, snake_body_set)
+    ate_apple = False
     score = 0
     direction = Directions.RIGHT
 
-    clear_screen()
+    if platform.system() == "Windows":
+        # windows clearfix to make ansi work outside of windows terminal
+        os.system("cls")
+    else:
+        clear_screen()
     while True:
         handle_signals()
         show_cursor(False)
         clear_map()
 
         print("Press 'q' to quit")
-        print_map(cells, snake, apple)
+        print_map(MAP_WIDTH, MAP_HEIGHT, snake_head, snake_body_set, apple)
 
         key_pressed, timed_out = timedKey(
-            "\u001b[2K", timeout=0.3, allowCharacters="wasdq"  # type: ignore
+            "\u001b[2K", timeout=0.2, allowCharacters="wasdq"  # type: ignore
         )
 
         if not timed_out:
@@ -239,15 +246,18 @@ def main() -> None:
             else:
                 direction = change_direction(direction, key_pressed)
 
-        if hit_apple(snake[0], direction, apple):
-            snake.append(snake[-1])
-            apple = get_apple_pos(snake)
+        # mutate the snake and snake body set
+        update_snake(snake, snake_body_set, direction, ate_apple)
+        snake_head = snake[0]
+        ate_apple = False
+
+        if snake_head == apple:
+            apple = get_apple_pos(snake[0], snake_body_set)
+            ate_apple = True
             score += 1
 
-        if hit_self(snake):
+        if snake_head in snake_body_set:
             exit_game(score)
-
-        snake = update_snake(snake, direction)
 
 
 if __name__ == "__main__":
