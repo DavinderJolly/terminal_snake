@@ -112,7 +112,8 @@ def update_snake(
 
 
 def print_map(
-    cells: list[tuple[int, int]],
+    width: int,
+    height: int,
     snake_head: tuple[int, int],
     snake_body_set: set[tuple[int, int]],
     apple: tuple[int, int],
@@ -120,26 +121,27 @@ def print_map(
     """Print the map with the snake and the apple.
 
     Args:
-        cells (list[tuple[int, int]]): The map.
+        width (int): The width of the map.
+        height (int): The height of the map.
         snake_head (tuple[int, int]): The snake's head position.
         snake_body_set (set[tuple[int, int]]): The snake's body position.
         apple (tuple[int, int]): The apple's position.
     """
-    for cell in cells:
-        output = ""
-        if cell[0] in (0, MAP_WIDTH - 1) or cell[1] in (0, MAP_HEIGHT - 1):
-            output = ForeColors.BRIGHT_CYAN + "█" + ForeColors.RESET
-        elif cell == apple:
-            output = ForeColors.BRIGHT_RED + "○" + ForeColors.RESET
-        elif cell == snake_head:
-            output = ForeColors.BLUE + "⬤" + ForeColors.RESET
-        elif cell in snake_body_set:
-            output = ForeColors.BRIGHT_GREEN + "⬤" + ForeColors.RESET
-        else:
-            output = " "
-        print(output, end="")
-        if cell[0] == MAP_WIDTH - 1:
-            print()
+    for y in range(height):
+        for x in range(width):
+            output = ""
+            if x in (0, MAP_WIDTH - 1) or y in (0, MAP_HEIGHT - 1):
+                output = ForeColors.BRIGHT_CYAN + "█" + ForeColors.RESET
+            elif (x, y) == apple:
+                output = ForeColors.BRIGHT_RED + "○" + ForeColors.RESET
+            elif (x, y) == snake_head:
+                output = ForeColors.BLUE + "⬤" + ForeColors.RESET
+            elif (x, y) in snake_body_set:
+                output = ForeColors.BRIGHT_GREEN + "⬤" + ForeColors.RESET
+            else:
+                output = " "
+            print(output, end="")
+        print()
 
 
 def change_direction(current_dir: tuple[int, int], key: str) -> tuple[int, int]:
@@ -241,7 +243,6 @@ def handle_signals() -> None:
 
 def main() -> None:
     """Entry point function."""
-    cells = [(col, row) for row in range(MAP_HEIGHT) for col in range(MAP_WIDTH)]
     snake: deque[tuple[int, int]] = deque(
         [
             (5, (MAP_HEIGHT // 2)),
@@ -266,7 +267,7 @@ def main() -> None:
         clear_map()
 
         print("Press 'q' to quit")
-        print_map(cells, snake_head, snake_body_set, apple)
+        print_map(MAP_WIDTH, MAP_HEIGHT, snake_head, snake_body_set, apple)
 
         key_pressed, timed_out = timedKey(
             "\u001b[2K", timeout=0.3, allowCharacters="wasdq"  # type: ignore
